@@ -55,6 +55,7 @@ func Provider() *schema.Provider {
 			"proxmox_virtual_environment_role":        resourceVirtualEnvironmentRole(),
 			"proxmox_virtual_environment_user":        resourceVirtualEnvironmentUser(),
 			"proxmox_virtual_environment_vm":          resourceVirtualEnvironmentVM(),
+			"proxmox_modify_virtual_environment_vm":   resourceModifyVirtualEnvironmentVM(),
 		},
 		Schema: map[string]*schema.Schema{
 			mkProviderVirtualEnvironment: &schema.Schema{

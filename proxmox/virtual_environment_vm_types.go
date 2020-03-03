@@ -329,6 +329,13 @@ type VirtualEnvironmentVMGetResponseBody struct {
 	Data *VirtualEnvironmentVMGetResponseData `json:"data,omitempty"`
 }
 
+// CustomVirtualIODeviceConfig contains data for a virtio device
+type CustomVirtualIODeviceConfig struct {
+	Description string  `json:"-" url:"-"`
+	Media       *string `json:"media,omitempty" url:"media"`
+	Size        *string `json:"size,omitempty" url:"size,omitempty"`
+}
+
 // VirtualEnvironmentVMGetResponseData contains the data from an virtual machine get response.
 type VirtualEnvironmentVMGetResponseData struct {
 	ACPI                 *CustomBool                   `json:"acpi,omitempty"`
@@ -439,7 +446,22 @@ type VirtualEnvironmentVMGetResponseData struct {
 	USBDevices           *CustomUSBDevices             `json:"usb,omitempty"`
 	VGADevice            *CustomVGADevice              `json:"vga,omitempty"`
 	VirtualCPUCount      *int                          `json:"vcpus,omitempty"`
-	VirtualIODevices     *CustomVirtualIODevices       `json:"virtio,omitempty"`
+	VirtualIODevice0     *CustomVirtualIODeviceConfig  `json:"virtio0,omitempty"`
+	VirtualIODevice1     *CustomVirtualIODeviceConfig  `json:"virtio1,omitempty"`
+	VirtualIODevice2     *CustomVirtualIODeviceConfig  `json:"virtio2,omitempty"`
+	VirtualIODevice3     *CustomVirtualIODeviceConfig  `json:"virtio3,omitempty"`
+	VirtualIODevice4     *CustomVirtualIODeviceConfig  `json:"virtio4,omitempty"`
+	VirtualIODevice5     *CustomVirtualIODeviceConfig  `json:"virtio5,omitempty"`
+	VirtualIODevice6     *CustomVirtualIODeviceConfig  `json:"virtio6,omitempty"`
+	VirtualIODevice7     *CustomVirtualIODeviceConfig  `json:"virtio7,omitempty"`
+	VirtualIODevice8     *CustomVirtualIODeviceConfig  `json:"virtio8,omitempty"`
+	VirtualIODevice9     *CustomVirtualIODeviceConfig  `json:"virtio9,omitempty"`
+	VirtualIODevice10    *CustomVirtualIODeviceConfig  `json:"virtio10,omitempty"`
+	VirtualIODevice11    *CustomVirtualIODeviceConfig  `json:"virtio11,omitempty"`
+	VirtualIODevice12    *CustomVirtualIODeviceConfig  `json:"virtio12,omitempty"`
+	VirtualIODevice13    *CustomVirtualIODeviceConfig  `json:"virtio13,omitempty"`
+	VirtualIODevice14    *CustomVirtualIODeviceConfig  `json:"virtio14,omitempty"`
+	VirtualIODevice15    *CustomVirtualIODeviceConfig  `json:"virtio15,omitempty"`
 	VMGenerationID       *string                       `json:"vmgenid,omitempty"`
 	VMStateDatastoreID   *string                       `json:"vmstatestorage,omitempty"`
 	WatchdogDevice       *CustomWatchdogDevice         `json:"watchdog,omitempty"`
@@ -448,6 +470,22 @@ type VirtualEnvironmentVMGetResponseData struct {
 // VirtualEnvironmentVMGetStatusResponseBody contains the body from a VM get status response.
 type VirtualEnvironmentVMGetStatusResponseBody struct {
 	Data *VirtualEnvironmentVMGetStatusResponseData `json:"data,omitempty"`
+}
+
+// VirtualEnvironmentVMCommonResponseBody contains body from common return values such as upid
+type VirtualEnvironmentVMCommonResponseBody struct {
+	Data *string `json:"data,omitempty"`
+}
+
+// VirtualEnvironmentVMWaitForTaskResponseData contains data from task state for a node
+type VirtualEnvironmentVMWaitForTaskResponseData struct {
+	PID    *int    `json:"pid,omitempty"`
+	Status *string `json:"status,omitempty"`
+}
+
+// VirtualEnvironmentVMWaitForTaskResponseBody contains body from task state for a node
+type VirtualEnvironmentVMWaitForTaskResponseBody struct {
+	Data *VirtualEnvironmentVMWaitForTaskResponseData `json:"data,omitempty"`
 }
 
 // VirtualEnvironmentVMGetStatusResponseData contains the data from a VM get status response.
@@ -480,6 +518,19 @@ type VirtualEnvironmentVMListResponseData struct {
 // VirtualEnvironmentVMRebootRequestBody contains the body for a VM reboot request.
 type VirtualEnvironmentVMRebootRequestBody struct {
 	Timeout *int `json:"timeout,omitempty" url:"timeout,omitempty"`
+}
+
+// VirtualEnvironmentVMResizeDiskRequestBody contains the body for a VM disk resize request
+type VirtualEnvironmentVMResizeDiskRequestBody struct {
+	Disk *string `json:"disk,omitempty" url:"disk,omitempty"`
+	Size *string `json:"size,omitempty" url:"size,omitempty"`
+}
+
+// VirtualEnvironmentVMMoveDiskRequestBody contains the body for a VM move disk  request
+type VirtualEnvironmentVMMoveDiskRequestBody struct {
+	Storage *string     `json:"storage,omitempty" url:"storage,omitempty"`
+	Disk    *string     `json:"disk,omitempty" url:"disk,omitempty"`
+	Delete  *CustomBool `json:"delete,omitempty,int" url:"delete,omitempty,int"`
 }
 
 // VirtualEnvironmentVMShutdownRequestBody contains the body for a VM shutdown request.
@@ -1427,6 +1478,37 @@ func (r *CustomSMBIOS) UnmarshalJSON(b []byte) error {
 				r.UUID = &v[1]
 			case "version":
 				r.Version = &v[1]
+			}
+		}
+	}
+
+	return nil
+}
+
+// UnmarshalJSON converts a CustomVirtualIODeviceConfig string to an object.
+func (r *CustomVirtualIODeviceConfig) UnmarshalJSON(b []byte) error {
+	var s string
+
+	err := json.Unmarshal(b, &s)
+
+	if err != nil {
+		return err
+	}
+
+	parts := strings.Split(s, ",")
+
+	for _, part := range parts {
+		keyValue := strings.Split(strings.TrimSpace(part), "=")
+
+		length := len(keyValue)
+		if length == 1 {
+			r.Description = keyValue[0]
+		} else if length == 2 {
+			switch keyValue[0] {
+			case "media":
+				r.Media = &keyValue[1]
+			case "size":
+				r.Size = &keyValue[1]
 			}
 		}
 	}

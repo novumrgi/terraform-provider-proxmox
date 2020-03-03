@@ -3212,9 +3212,16 @@ func resourceVirtualEnvironmentVMUpdate(d *schema.ResourceData, m interface{}) e
 	if !bool(template) && rebootRequired {
 		rebootTimeout := 300
 
-		err = veClient.RebootVM(nodeName, vmID, &proxmox.VirtualEnvironmentVMRebootRequestBody{
+		response, err = veClient.RebootVM(nodeName, vmID, &proxmox.VirtualEnvironmentVMRebootRequestBody{
 			Timeout: &rebootTimeout,
 		})
+
+		if err != nil {
+			return err
+		}
+
+		// wait for reboot to finish, even though it only takes a few seconds
+		err = veClient.WaitForTask(nodeName, *response)
 
 		if err != nil {
 			return err

@@ -7,6 +7,7 @@ package proxmox
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -108,9 +109,64 @@ func (c *VirtualEnvironmentClient) ListVMs() ([]*VirtualEnvironmentVMListRespons
 	return nil, errors.New("Not implemented")
 }
 
+// ResizeDisk for a virtual Machine
+func (c *VirtualEnvironmentClient) ResizeDisk(nodeName string, vmID int, d *VirtualEnvironmentVMResizeDiskRequestBody) error {
+	return c.DoRequest(hmPUT, fmt.Sprintf("nodes/%s/qemu/%d/resize", url.PathEscape(nodeName), vmID), d, nil)
+}
+
+// MoveDisk for a virtual Machine
+func (c *VirtualEnvironmentClient) MoveDisk(nodeName string, vmID int, d *VirtualEnvironmentVMMoveDiskRequestBody) (*string, error) {
+	resBody := &VirtualEnvironmentVMCommonResponseBody{}
+	err := c.DoRequest(hmPOST, fmt.Sprintf("nodes/%s/qemu/%d/move_disk", url.PathEscape(nodeName), vmID), d, resBody)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resBody.Data == nil {
+		return nil, errors.New("The server did not include a data object in the response")
+	}
+
+	return resBody.Data, nil
+}
+
 // RebootVM reboots a virtual machine.
-func (c *VirtualEnvironmentClient) RebootVM(nodeName string, vmID int, d *VirtualEnvironmentVMRebootRequestBody) error {
-	return c.DoRequest(hmPOST, fmt.Sprintf("nodes/%s/qemu/%d/status/reboot", url.PathEscape(nodeName), vmID), d, nil)
+func (c *VirtualEnvironmentClient) RebootVM(nodeName string, vmID int, d *VirtualEnvironmentVMRebootRequestBody) (*string, error) {
+	resBody := &VirtualEnvironmentVMCommonResponseBody{}
+	err := c.DoRequest(hmPOST, fmt.Sprintf("nodes/%s/qemu/%d/status/reboot", url.PathEscape(nodeName), vmID), d, resBody)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resBody.Data == nil {
+		return nil, errors.New("The server did not include a data object in the response")
+	}
+
+	return resBody.Data, nil
+}
+
+// WaitForTask to finish
+func (c *VirtualEnvironmentClient) WaitForTask(nodeName string, upid string) error {
+	resBody := &VirtualEnvironmentVMWaitForTaskResponseBody{}
+	status := "running"
+	var err error
+	for status == "running" {
+		err = c.DoRequest(hmGET, fmt.Sprintf("nodes/%s/tasks/%s/status", url.PathEscape(nodeName), upid), nil, resBody)
+
+		if err != nil {
+			return err
+		}
+
+		if resBody.Data == nil {
+			return errors.New("The server did not include a data object in the response")
+		}
+
+		status = *resBody.Data.Status
+		log.Printf("[DEBUG] wait for state stopped is currently:%s", status)
+		time.Sleep(2 * time.Second)
+	}
+	return nil
 }
 
 // ShutdownVM shuts down a virtual machine.
@@ -134,8 +190,20 @@ func (c *VirtualEnvironmentClient) UpdateVM(nodeName string, vmID int, d *Virtua
 }
 
 // UpdateVMAsync updates a virtual machine asynchronously.
-func (c *VirtualEnvironmentClient) UpdateVMAsync(nodeName string, vmID int, d *VirtualEnvironmentVMUpdateRequestBody) error {
-	return c.DoRequest(hmPOST, fmt.Sprintf("nodes/%s/qemu/%d/config", url.PathEscape(nodeName), vmID), d, nil)
+func (c *VirtualEnvironmentClient) UpdateVMAsync(nodeName string, vmID int, d *VirtualEnvironmentVMUpdateRequestBody) (*string, error) {
+
+	resBody := &VirtualEnvironmentVMCommonResponseBody{}
+	err := c.DoRequest(hmPOST, fmt.Sprintf("nodes/%s/qemu/%d/config", url.PathEscape(nodeName), vmID), d, resBody)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resBody.Data == nil {
+		return nil, errors.New("The server did not include a data object in the response")
+	}
+
+	return resBody.Data, nil
 }
 
 // WaitForNetworkInterfacesFromVMAgent waits for a virtual machine's QEMU agent to publish the network interfaces.
