@@ -37,6 +37,7 @@ const (
 	dvResourceVirtualEnvironmentVMCPUType                           = "qemu64"
 	dvResourceVirtualEnvironmentVMCPUUnits                          = 1024
 	dvResourceVirtualEnvironmentVMDescription                       = ""
+	dvResourcevirtualEnvironmentVMDiskName                          = "scsci0"
 	dvResourceVirtualEnvironmentVMDiskDatastoreID                   = "local-lvm"
 	dvResourceVirtualEnvironmentVMDiskFileFormat                    = "qcow2"
 	dvResourceVirtualEnvironmentVMDiskFileID                        = ""
@@ -108,6 +109,7 @@ const (
 	mkResourceVirtualEnvironmentVMCPUUnits                          = "units"
 	mkResourceVirtualEnvironmentVMDescription                       = "description"
 	mkResourceVirtualEnvironmentVMDisk                              = "disk"
+	mkResourcevirtualEnvironmentVMDiskName                          = "name"
 	mkResourceVirtualEnvironmentVMDiskDatastoreID                   = "datastore_id"
 	mkResourceVirtualEnvironmentVMDiskFileFormat                    = "file_format"
 	mkResourceVirtualEnvironmentVMDiskFileID                        = "file_id"
@@ -423,12 +425,19 @@ func resourceVirtualEnvironmentVM() *schema.Resource {
 							mkResourceVirtualEnvironmentVMDiskDatastoreID: dvResourceVirtualEnvironmentVMDiskDatastoreID,
 							mkResourceVirtualEnvironmentVMDiskFileFormat:  dvResourceVirtualEnvironmentVMDiskFileFormat,
 							mkResourceVirtualEnvironmentVMDiskFileID:      dvResourceVirtualEnvironmentVMDiskFileID,
+							mkResourcevirtualEnvironmentVMDiskName:        dvResourcevirtualEnvironmentVMDiskName,
 							mkResourceVirtualEnvironmentVMDiskSize:        dvResourceVirtualEnvironmentVMDiskSize,
 						},
 					}, nil
 				},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						mkResourcevirtualEnvironmentVMDiskName: {
+							Type:        schema.TypeString,
+							Description: "The datastore name",
+							Optional:    true,
+							Default:     dvResourcevirtualEnvironmentVMDiskName,
+						},
 						mkResourceVirtualEnvironmentVMDiskDatastoreID: {
 							Type:        schema.TypeString,
 							Description: "The datastore id",
@@ -1262,6 +1271,32 @@ func resourceVirtualEnvironmentVMCreateClone(d *schema.ResourceData, m interface
 	updateBody.Delete = delete
 
 	err = veClient.UpdateVM(nodeName, vmID, updateBody)
+
+	disk := d.Get(mkResourceVirtualEnvironmentVMDisk).([]interface{})
+	diskBlock := disk[0].(map[string]interface{})
+	diskName := diskBlock[mkResourcevirtualEnvironmentVMDiskName].(string)
+	dataStoreID := diskBlock[mkResourceVirtualEnvironmentVMDiskDatastoreID].(string)
+	diskSize := diskBlock[mkResourceVirtualEnvironmentVMDiskSize].(int)
+
+	deleteOriginalDisk := proxmox.CustomBool(true)
+	diskMoveBody := &proxmox.VirtualEnvironmentVMMoveDiskRequestBody{
+		DeleteOriginalDisk: &deleteOriginalDisk,
+		Disk:               diskName,
+		TargetStorage:      dataStoreID,
+	}
+
+	diskResizeBody := &proxmox.VirtualEnvironmentVMResizeDiskRequestBody{
+		Disk: diskName,
+		Size: fmt.Sprintf("%dG", diskSize),
+	}
+
+	err = veClient.MoveVMDisk(nodeName, vmID, diskMoveBody)
+
+	if err != nil {
+		return err
+	}
+
+	err = veClient.ResizeVMDisk(nodeName, vmID, diskResizeBody)
 
 	if err != nil {
 		return err
@@ -3335,6 +3370,8 @@ func resourceVirtualEnvironmentVMUpdateDiskLocationAndSize(d *schema.ResourceDat
 			diskNewBlock := diskNewEntries[i].(map[string]interface{})
 
 			diskOldDatastoreID := diskOldBlock[mkResourceVirtualEnvironmentVMDiskDatastoreID].(string)
+			diskOldName := diskOldBlock[mkResourcevirtualEnvironmentVMDiskName].(string)
+
 			diskNewDatastoreID := diskNewBlock[mkResourceVirtualEnvironmentVMDiskDatastoreID].(string)
 
 			if diskOldDatastoreID != diskNewDatastoreID {
@@ -3342,7 +3379,7 @@ func resourceVirtualEnvironmentVMUpdateDiskLocationAndSize(d *schema.ResourceDat
 
 				diskMoveBodies = append(diskMoveBodies, &proxmox.VirtualEnvironmentVMMoveDiskRequestBody{
 					DeleteOriginalDisk: &deleteOriginalDisk,
-					Disk:               fmt.Sprintf("scsi%d", i),
+					Disk:               diskOldName,
 					TargetStorage:      diskNewDatastoreID,
 				})
 			}
@@ -3352,7 +3389,7 @@ func resourceVirtualEnvironmentVMUpdateDiskLocationAndSize(d *schema.ResourceDat
 
 			if diskOldSize != diskNewSize {
 				diskResizeBodies = append(diskResizeBodies, &proxmox.VirtualEnvironmentVMResizeDiskRequestBody{
-					Disk: fmt.Sprintf("scsi%d", i),
+					Disk: diskOldName,
 					Size: fmt.Sprintf("%dG", diskNewSize),
 				})
 			}
