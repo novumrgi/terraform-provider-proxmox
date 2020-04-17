@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	dvResourceVirtualEnvironmentVMRebootAfterCreation               = false
 	dvResourceVirtualEnvironmentVMACPI                              = true
 	dvResourceVirtualEnvironmentVMAgentEnabled                      = false
 	dvResourceVirtualEnvironmentVMAgentTimeout                      = "15m"
@@ -82,6 +83,7 @@ const (
 	maxResourceVirtualEnvironmentVMNetworkDevices = 8
 	maxResourceVirtualEnvironmentVMSerialDevices  = 4
 
+	mkResourceVirtualEnvironmentVMRebootAfterCreation               = "reboot"
 	mkResourceVirtualEnvironmentVMACPI                              = "acpi"
 	mkResourceVirtualEnvironmentVMAgent                             = "agent"
 	mkResourceVirtualEnvironmentVMAgentEnabled                      = "enabled"
@@ -173,6 +175,12 @@ const (
 func resourceVirtualEnvironmentVM() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
+			mkResourceVirtualEnvironmentVMRebootAfterCreation: {
+				Type:        schema.TypeBool,
+				Description: "Wether to reboot vm after creation",
+				Optional:    true,
+				Default:     dvResourceVirtualEnvironmentVMRebootAfterCreation,
+			},
 			mkResourceVirtualEnvironmentVMACPI: {
 				Type:        schema.TypeBool,
 				Description: "Whether to enable ACPI",
@@ -1756,6 +1764,7 @@ func resourceVirtualEnvironmentVMCreateCustomDisks(d *schema.ResourceData, m int
 func resourceVirtualEnvironmentVMCreateStart(d *schema.ResourceData, m interface{}) error {
 	started := d.Get(mkResourceVirtualEnvironmentVMStarted).(bool)
 	template := d.Get(mkResourceVirtualEnvironmentVMTemplate).(bool)
+	reboot := d.Get(mkResourceVirtualEnvironmentVMRebootAfterCreation).(bool)
 
 	if !started || template {
 		return resourceVirtualEnvironmentVMRead(d, m)
@@ -1780,6 +1789,18 @@ func resourceVirtualEnvironmentVMCreateStart(d *schema.ResourceData, m interface
 
 	if err != nil {
 		return err
+	}
+
+	if reboot {
+		rebootTimeout := 300
+
+		err := veClient.RebootVM(nodeName, vmID, &proxmox.VirtualEnvironmentVMRebootRequestBody{
+			Timeout: &rebootTimeout,
+		})
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return resourceVirtualEnvironmentVMRead(d, m)
