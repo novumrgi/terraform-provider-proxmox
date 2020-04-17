@@ -3481,7 +3481,12 @@ func resourceVirtualEnvironmentVMUpdateDiskLocationAndSize(d *schema.ResourceDat
 			diskNewBlock := diskNewEntries[i].(map[string]interface{})
 
 			diskOldDatastoreID := diskOldBlock[mkResourceVirtualEnvironmentVMDiskDatastoreID].(string)
-			diskOldName := diskOldBlock[mkResourcevirtualEnvironmentVMDiskInterface].(string)
+			diskOldInterface := diskOldBlock[mkResourcevirtualEnvironmentVMDiskInterface].(string)
+			diskNewInterface := diskNewBlock[mkResourcevirtualEnvironmentVMDiskInterface].(string)
+
+			if diskNewInterface != diskOldInterface {
+				return fmt.Errorf("Alteration of disk interface is not supported. Old Interface was %s", diskOldInterface)
+			}
 
 			diskNewDatastoreID := diskNewBlock[mkResourceVirtualEnvironmentVMDiskDatastoreID].(string)
 
@@ -3490,7 +3495,7 @@ func resourceVirtualEnvironmentVMUpdateDiskLocationAndSize(d *schema.ResourceDat
 
 				diskMoveBodies = append(diskMoveBodies, &proxmox.VirtualEnvironmentVMMoveDiskRequestBody{
 					DeleteOriginalDisk: &deleteOriginalDisk,
-					Disk:               diskOldName,
+					Disk:               diskOldInterface,
 					TargetStorage:      diskNewDatastoreID,
 				})
 			}
@@ -3498,9 +3503,9 @@ func resourceVirtualEnvironmentVMUpdateDiskLocationAndSize(d *schema.ResourceDat
 			diskOldSize := diskOldBlock[mkResourceVirtualEnvironmentVMDiskSize].(int)
 			diskNewSize := diskNewBlock[mkResourceVirtualEnvironmentVMDiskSize].(int)
 
-			if diskOldSize != diskNewSize {
+			if diskOldSize <= diskNewSize {
 				diskResizeBodies = append(diskResizeBodies, &proxmox.VirtualEnvironmentVMResizeDiskRequestBody{
-					Disk: diskOldName,
+					Disk: diskOldInterface,
 					Size: fmt.Sprintf("%dG", diskNewSize),
 				})
 			}
