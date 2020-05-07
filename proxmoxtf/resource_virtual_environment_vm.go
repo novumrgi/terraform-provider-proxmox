@@ -33,6 +33,7 @@ const (
 	dvResourceVirtualEnvironmentVMCDROMFileID                       = ""
 	dvResourceVirtualEnvironmentVMCloneDatastoreID                  = ""
 	dvResourceVirtualEnvironmentVMCloneNodeName                     = ""
+	dvResourceVirtualEnvironmentVMCloneRetries                      = 0
 	dvResourceVirtualEnvironmentVMCPUArchitecture                   = "x86_64"
 	dvResourceVirtualEnvironmentVMCPUCores                          = 1
 	dvResourceVirtualEnvironmentVMCPUHotplugged                     = 0
@@ -100,6 +101,7 @@ const (
 	mkResourceVirtualEnvironmentVMCDROMEnabled                      = "enabled"
 	mkResourceVirtualEnvironmentVMCDROMFileID                       = "file_id"
 	mkResourceVirtualEnvironmentVMClone                             = "clone"
+	mkResourceVirtualEnvironmentVMCloneRetries                      = "retries"
 	mkResourceVirtualEnvironmentVMCloneDatastoreID                  = "datastore_id"
 	mkResourceVirtualEnvironmentVMCloneNodeName                     = "node_name"
 	mkResourceVirtualEnvironmentVMCloneVMID                         = "vm_id"
@@ -317,6 +319,13 @@ func resourceVirtualEnvironmentVM() *schema.Resource {
 				},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						mkResourceVirtualEnvironmentVMCloneRetries: {
+							Type:        schema.TypeInt,
+							Description: "The number of Retries to create a clone",
+							Optional:    true,
+							ForceNew:    true,
+							Default:     dvResourceVirtualEnvironmentVMCloneRetries,
+						},
 						mkResourceVirtualEnvironmentVMCloneDatastoreID: {
 							Type:        schema.TypeString,
 							Description: "The ID of the target datastore",
@@ -987,6 +996,7 @@ func resourceVirtualEnvironmentVMCreateClone(d *schema.ResourceData, m interface
 
 	clone := d.Get(mkResourceVirtualEnvironmentVMClone).([]interface{})
 	cloneBlock := clone[0].(map[string]interface{})
+	cloneRetries := cloneBlock[mkResourceVirtualEnvironmentVMCloneRetries].(int)
 	cloneDatastoreID := cloneBlock[mkResourceVirtualEnvironmentVMCloneDatastoreID].(string)
 	cloneNodeName := cloneBlock[mkResourceVirtualEnvironmentVMCloneNodeName].(string)
 	cloneVMID := cloneBlock[mkResourceVirtualEnvironmentVMCloneVMID].(int)
@@ -1033,9 +1043,9 @@ func resourceVirtualEnvironmentVMCreateClone(d *schema.ResourceData, m interface
 	if cloneNodeName != "" && cloneNodeName != nodeName {
 		cloneBody.TargetNodeName = &nodeName
 
-		err = veClient.CloneVM(cloneNodeName, cloneVMID, cloneBody)
+		err = veClient.CloneVM(cloneNodeName, cloneVMID, cloneRetries, cloneBody)
 	} else {
-		err = veClient.CloneVM(nodeName, cloneVMID, cloneBody)
+		err = veClient.CloneVM(nodeName, cloneVMID, cloneRetries, cloneBody)
 	}
 
 	if err != nil {
