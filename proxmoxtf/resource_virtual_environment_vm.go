@@ -41,7 +41,7 @@ const (
 	dvResourceVirtualEnvironmentVMCPUType                           = "qemu64"
 	dvResourceVirtualEnvironmentVMCPUUnits                          = 1024
 	dvResourceVirtualEnvironmentVMDescription                       = ""
-	dvResourcevirtualEnvironmentVMDiskInterface                     = ""
+	dvResourcevirtualEnvironmentVMDiskInterface                     = "scsi0"
 	dvResourceVirtualEnvironmentVMDiskDatastoreID                   = "local-lvm"
 	dvResourceVirtualEnvironmentVMDiskFileFormat                    = "qcow2"
 	dvResourceVirtualEnvironmentVMDiskFileID                        = ""
@@ -454,8 +454,7 @@ func resourceVirtualEnvironmentVM() *schema.Resource {
 						mkResourcevirtualEnvironmentVMDiskInterface: {
 							Type:        schema.TypeString,
 							Description: "The datastore name",
-							Optional:    false,
-							Default:     dvResourcevirtualEnvironmentVMDiskInterface,
+							Required:    true,
 						},
 						mkResourceVirtualEnvironmentVMDiskDatastoreID: {
 							Type:        schema.TypeString,
